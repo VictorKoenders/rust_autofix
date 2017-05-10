@@ -17,6 +17,7 @@ fn main() {
                               .current_dir(&state.working_directory)
                               .output()
                               .unwrap();
+
     let s = String::from_utf8_lossy(&output.stdout);
     let mut stdin = std::io::stdin();
     'mainloop: for (index, line) in s.lines().enumerate() {
@@ -45,7 +46,7 @@ fn main() {
                 println!("q) Quit");
 
                 let mut byte = [0u8;1];
-                stdin.read(&mut byte).unwrap();
+                stdin.read_exact(&mut byte).unwrap();
 
                 match byte[0] {
                     n if n >= b'0' && n <= b'9' && (n - b'0') as usize <= options.len() => {

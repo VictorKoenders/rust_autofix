@@ -17,7 +17,7 @@ impl MissingImport {
         let mut path = PathBuf::from(&state.working_directory);
         path.push(&self.file);
 
-        let ref option = option.trim().trim_matches('`');
+        let option = option.trim().trim_matches('`');
 
         let mut file = OpenOptions::new().read(true).write(true).open(&path)?;
         let mut contents = String::new();
@@ -66,8 +66,8 @@ impl Suggestion for MissingImport {
         true
     }
 
-    fn title(&self) -> String {
-        self.title.clone()
+    fn title(&self) -> &str {
+        &self.title
     }
 
     fn options(&self) -> Vec<String> {

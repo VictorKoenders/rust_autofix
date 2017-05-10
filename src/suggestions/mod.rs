@@ -6,7 +6,7 @@ use state::State;
 
 pub trait Suggestion {
     fn initialize(&mut self, json: &Value) -> bool;
-    fn title(&self) -> String;
+    fn title(&self) -> &str;
     fn options(&self) -> Vec<String>;
     fn apply_option(&mut self, state: &State, option: String);
 }
