@@ -1,7 +1,9 @@
 use std::io::{Seek, SeekFrom, Read, Result, Write};
 use std::fs::OpenOptions;
+use std::path::PathBuf;
 use super::Suggestion;
 use serde_json::Value;
+use state::State;
 
 #[derive(Default)]
 pub struct MissingImport {
@@ -11,12 +13,13 @@ pub struct MissingImport {
 }
 
 impl MissingImport {
-    fn try_apply_option(&mut self, option: String) -> Result<()> {
-        let file = format!("d:/Development/Personal/rust_megabouncer/irc_connector/{}", self.file).replace("\\", "/");
+    fn try_apply_option(&mut self, state: &State, option: String) -> Result<()> {
+        let mut path = PathBuf::from(&state.working_directory);
+        path.push(&self.file);
 
         let ref option = option.trim().trim_matches('`');
 
-        let mut file = OpenOptions::new().read(true).write(true).open(&file)?;
+        let mut file = OpenOptions::new().read(true).write(true).open(&path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         contents = format!("{}\n{}", option, contents);
@@ -72,8 +75,8 @@ impl Suggestion for MissingImport {
     }
 
 
-    fn apply_option(&mut self, option: String){
-        if let Err(e) = self.try_apply_option(option){
+    fn apply_option(&mut self, state: &State, option: String){
+        if let Err(e) = self.try_apply_option(state, option){
             println!("Could not apply: {}", e);
         }
     }

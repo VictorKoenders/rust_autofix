@@ -4,15 +4,17 @@ use std::process::{Command, Output};
 use std::io::{Read, Write};
 
 mod suggestions;
+mod state;
 
 fn main() {
+    let state = state::State::new();
     let mut suggestions = suggestions::get_all_suggestions();
 
     println!("Compiling in the background, this might take a second...");
     let output: Output = Command::new("cargo")
                               .arg("build")
                               .arg("--message-format=json")
-                              .current_dir("d:/Development/Personal/rust_megabouncer/irc_connector")
+                              .current_dir(&state.working_directory)
                               .output()
                               .unwrap();
     let s = String::from_utf8_lossy(&output.stdout);
@@ -48,7 +50,7 @@ fn main() {
                 match byte[0] {
                     n if n >= b'0' && n <= b'9' && (n - b'0') as usize <= options.len() => {
                         let option = options[(n - b'0') as usize].clone();
-                        suggestion.apply_option(option);
+                        suggestion.apply_option(&state, option);
                         break;
                     },
                     b's' => {
