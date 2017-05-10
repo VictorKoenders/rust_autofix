@@ -1,0 +1,7 @@
+[package]
+name = "rust_autofix"
+version = "0.1.0"
+authors = ["victor.koenders <victor.koenders@gmail.com>"]
+
+[dependencies]
+serde_json = "*"
