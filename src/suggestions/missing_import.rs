@@ -19,7 +19,9 @@ impl MissingImport {
 
         let option = option.trim().trim_matches('`');
 
-        let mut file = OpenOptions::new().read(true).write(true).open(&path)?;
+        let mut file = OpenOptions::new().read(true)
+            .write(true)
+            .open(&path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         contents = format!("{}\n{}", option, contents);
@@ -34,29 +36,36 @@ impl Suggestion for MissingImport {
     fn initialize(&mut self, json: &Value) -> bool {
         let message = match json.pointer("/message/children/0/message") {
             Some(&Value::String(ref str)) => str,
-            _ => return false
+            _ => return false,
         };
 
         let mut lines = message.lines();
-        if lines.next() != Some("possible candidates are found in other modules, you can import them into scope:") { return false; }
+        let description = lines.next();
+        if description !=
+           Some("possible candidates are found in other modules, you can import them into scope:") &&
+           description !=
+           Some("possible candidate is found in another module, you can import it into scope:") {
+            return false;
+        }
 
         let options = lines.map(String::from).collect::<Vec<String>>();
 
-        let filename = match json.pointer("/message/spans/0/file_name").and_then(Value::as_str){
+        let filename = match json.pointer("/message/spans/0/file_name").and_then(Value::as_str) {
             Some(s) => s,
-            None => return false
+            None => return false,
         };
-        let line_number = match json.pointer("/message/spans/0/line_start").and_then(Value::as_u64){
+        let line_number = match json.pointer("/message/spans/0/line_start")
+                  .and_then(Value::as_u64) {
             Some(s) => s,
-            None => return false
+            None => return false,
         };
-        let code = match json.pointer("/message/spans/0/text/0/text").and_then(Value::as_str){
+        let code = match json.pointer("/message/spans/0/text/0/text").and_then(Value::as_str) {
             Some(s) => s,
-            None => return false
+            None => return false,
         };
-        let text = match json.pointer("/message/message").and_then(Value::as_str){
+        let text = match json.pointer("/message/message").and_then(Value::as_str) {
             Some(s) => s,
-            None => return false
+            None => return false,
         };
 
         self.file = filename.to_string();
@@ -75,10 +84,9 @@ impl Suggestion for MissingImport {
     }
 
 
-    fn apply_option(&mut self, state: &State, option: String){
-        if let Err(e) = self.try_apply_option(state, option){
+    fn apply_option(&mut self, state: &State, option: String) {
+        if let Err(e) = self.try_apply_option(state, option) {
             println!("Could not apply: {}", e);
         }
     }
 }
-

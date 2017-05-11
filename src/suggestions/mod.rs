@@ -12,7 +12,5 @@ pub trait Suggestion {
 }
 
 pub fn get_all_suggestions() -> Vec<Box<Suggestion>> {
-    vec![
-        Box::new(self::missing_import::MissingImport::default())
-    ]
+    vec![Box::new(self::missing_import::MissingImport::default())]
 }

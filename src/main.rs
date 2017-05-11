@@ -1,69 +1,8 @@
-extern crate serde_json;
+extern crate rust_autofix;
 
-use std::process::{Command, Output};
-use std::io::{Read, Write};
-
-mod suggestions;
-mod state;
+use rust_autofix::state::State;
 
 fn main() {
-    let state = state::State::new();
-    let mut suggestions = suggestions::get_all_suggestions();
-
-    println!("Compiling in the background, this might take a second...");
-    let output: Output = Command::new("cargo")
-                              .arg("build")
-                              .arg("--message-format=json")
-                              .current_dir(&state.working_directory)
-                              .output()
-                              .unwrap();
-
-    let s = String::from_utf8_lossy(&output.stdout);
-    let mut stdin = std::io::stdin();
-    'mainloop: for (index, line) in s.lines().enumerate() {
-        let json: serde_json::Value = match serde_json::from_str(line) {
-            Ok(j) => j,
-            Err(e) => {
-                println!("Could not parse JSON at line {}: {:?}", index, e);
-                println!("{}", line);
-                println!("Full output can be found in compile_log.txt");
-                std::fs::File::create("compile_log.txt").unwrap().write_all(s.as_bytes()).unwrap();
-                break;
-            }
-        };
-
-        for suggestion in &mut suggestions {
-            if !suggestion.initialize(&json) { continue; }
-            println!("{}", suggestion.title());
-            let options = suggestion.options();
-
-            loop {
-                for (index, line) in options.iter().enumerate() {
-                    println!("{}) {}", index, line);
-                }
-                println!();
-                println!("s) Skip");
-                println!("q) Quit");
-
-                let mut byte = [0u8;1];
-                stdin.read_exact(&mut byte).unwrap();
-
-                match byte[0] {
-                    n if n >= b'0' && n <= b'9' && (n - b'0') as usize <= options.len() => {
-                        let option = options[(n - b'0') as usize].clone();
-                        suggestion.apply_option(&state, option);
-                        break;
-                    },
-                    b's' => {
-                        break;
-                    },
-                    b'q' => {
-                        break 'mainloop;
-                    },
-                    _ => {}
-                }
-            }
-            break;
-        }
-    }
+    let state = State::new();
+    rust_autofix::run_with_state(&state);
 }

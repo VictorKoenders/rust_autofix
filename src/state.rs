@@ -4,8 +4,6 @@ pub struct State {
 
 impl State {
     pub fn new() -> State {
-        State {
-            working_directory: String::from(".")
-        }
+        State { working_directory: String::from(".") }
     }
 }
