@@ -1,8 +1,11 @@
-extern crate rust_autofix;
+extern crate autofix;
 
-use rust_autofix::state::State;
+use autofix::state::State;
 
 fn main() {
-    let state = State::new();
-    rust_autofix::run_with_state(&state);
+    let mut state = match State::from_args(&mut std::env::args()) {
+        Some(s) => s,
+        None => return,
+    };
+    autofix::run_with_state(&mut state);
 }

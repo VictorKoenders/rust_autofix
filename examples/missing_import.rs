@@ -1,26 +1,25 @@
-extern crate rust_autofix;
+extern crate autofix;
 
 use std::io::Read;
 
 fn main() {
-    let mut state = rust_autofix::state::State::new();
+    let mut state = autofix::state::State::new();
     state.working_directory = String::from("examples/missing_import");
+    state.mdoe = autofix::state::RunMode::Run;
 
-    rust_autofix::run_with_state(&state);
+    autofix::run_with_state(&mut state);
 
-    compare_file("examples/missing_import/src/main.rs",
-                 "examples/missing_import/src/main.correct.rs");
+    //compare_file("examples/missing_import/src/main.rs",
+    //             "examples/missing_import/src/main.correct.rs");
 
-    println!("Resetting files to error state");
     std::fs::copy("examples/missing_import/src/main.incorrect.rs",
                   "examples/missing_import/src/main.rs")
             .unwrap();
 
     std::fs::remove_dir_all("examples/missing_import/target").unwrap();
-
-    println!("Done");
 }
 
+#[allow(dead_code)]
 fn compare_file(first_file: &str, second_file: &str) {
     println!("Comparing {} with {}", first_file, second_file);
 

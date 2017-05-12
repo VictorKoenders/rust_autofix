@@ -1,7 +1,7 @@
 use std::io::{Seek, SeekFrom, Read, Result, Write};
+use super::{AppliedFixes, Suggestion};
 use std::fs::OpenOptions;
 use std::path::PathBuf;
-use super::Suggestion;
 use serde_json::Value;
 use state::State;
 
@@ -13,11 +13,28 @@ pub struct MissingImport {
 }
 
 impl MissingImport {
-    fn try_apply_option(&mut self, state: &State, option: String) -> Result<()> {
+    fn try_apply_option(&mut self, state: &mut State, option: String) -> Result<()> {
         let mut path = PathBuf::from(&state.working_directory);
         path.push(&self.file);
 
+        let path = path.into_os_string();
+
         let option = option.trim().trim_matches('`');
+
+        if state.applied_suggestions.iter().any(|i| {
+            if let &AppliedFixes::AddedUsing { file: ref old_path, ref using } = i {
+                if old_path == &path && using == option {
+                    return true
+                }
+            }
+            false
+        }) {
+            return Ok(());
+        }
+
+        state.applied_suggestions.push(
+            AppliedFixes::AddedUsing { file: path.clone(), using: option.to_string() }
+        );
 
         let mut file = OpenOptions::new().read(true)
             .write(true)
@@ -84,7 +101,7 @@ impl Suggestion for MissingImport {
     }
 
 
-    fn apply_option(&mut self, state: &State, option: String) -> bool {
+    fn apply_option(&mut self, state: &mut State, option: String) -> bool {
         if let Err(e) = self.try_apply_option(state, option) {
             println!("Could not apply: {}", e);
             false

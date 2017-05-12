@@ -1,7 +1,7 @@
 extern crate serde_json;
 
 use std::process::{Command, Output};
-use std::io::{Read, Write};
+use std::io::{Write, Read};
 use std::path::PathBuf;
 use serde_json::Value;
 use state::State;
@@ -10,7 +10,7 @@ mod suggestions;
 pub mod state;
 
 
-pub fn run_with_state(state: &State) {
+pub fn run_with_state(state: &mut State) {
     let mut should_build = true;
     let mut suggestions = suggestions::get_all_suggestions();
 
@@ -22,9 +22,8 @@ pub fn run_with_state(state: &State) {
 
         println!("Compiling in the background, this might take a second...");
 
-
         let output: Output = match Command::new("cargo")
-                  .arg("build")
+                  .arg(state.mode.to_string())
                   .arg("--message-format=json")
                   .current_dir(dir.clone())
                   .output() {
@@ -36,22 +35,27 @@ pub fn run_with_state(state: &State) {
             }
         };
 
+        println!("Cargo exited with code {:?}", output.status.code());
+
         let s = String::from_utf8_lossy(&output.stdout);
 
-        let mut has_had_errors = false;
+        if state.output_compile_log {
+            std::fs::File::create("compile.log").unwrap().write_all(s.as_bytes()).unwrap();
+        }
 
-        for (index, line) in s.lines().enumerate() {
+        let mut print_output = false;
+
+        for line in s.lines() {
+            if print_output {
+                println!("{}", line);
+                continue;
+            }
             let json: Value = match serde_json::from_str(line) {
                 Ok(j) => j,
-                Err(e) => {
-                    println!("Could not parse JSON at line {}: {:?}", index, e);
+                Err(_) => {
                     println!("{}", line);
-                    println!("Full output can be found in compile_log.txt");
-                    std::fs::File::create("compile_log.txt")
-                        .unwrap()
-                        .write_all(s.as_bytes())
-                        .unwrap();
-                    break;
+                    print_output = true;
+                    continue;
                 }
             };
 
@@ -59,7 +63,6 @@ pub fn run_with_state(state: &State) {
 
             for mut suggestion in &mut suggestions {
                 if suggestion.initialize(&json) {
-                    has_had_errors = true;
                     was_handled = true;
                     match handle_suggestion(&mut suggestion, state) {
                         HandleSuggestionResult::Skipped => {
@@ -78,11 +81,11 @@ pub fn run_with_state(state: &State) {
             }
 
             if !was_handled && print_error(&json) {
-                has_had_errors = true;
+                should_build = false;
             }
         }
 
-        if !has_had_errors {
+        if output.status.success() {
             break;
         }
     }
@@ -95,7 +98,7 @@ enum HandleSuggestionResult {
 }
 
 fn handle_suggestion(suggestion: &mut Box<suggestions::Suggestion>,
-                     state: &State)
+                     state: &mut State)
                      -> HandleSuggestionResult {
     println!("{}", suggestion.title());
     let options = suggestion.options();
@@ -136,10 +139,10 @@ fn handle_suggestion(suggestion: &mut Box<suggestions::Suggestion>,
 }
 
 fn print_error(json: &Value) -> bool {
-    let level = match json.pointer("/message/children/0/level").and_then(Value::as_str) {
+    let level = match json.pointer("/message/level").and_then(Value::as_str) {
         Some(l) => l,
         None => {
-            //println!("Could not find message level: {}", json);
+            // println!("Could not find message level: {}", json);
             return false;
         }
     };
@@ -147,9 +150,19 @@ fn print_error(json: &Value) -> bool {
         return false;
     }
     if level == "error" {
-        if let Some(message) = json.pointer("/message/children/0/message").and_then(Value::as_str) {
+        if let Some(message) = json.pointer("/message/message").and_then(Value::as_str) {
             if message == "aborting due to previous error" {
                 return false;
+            } else {
+                if let Some(file_name) = json.pointer("/message/spans/0/file_name").and_then(Value::as_str) {
+                    if let Some(line) = json.pointer("/message/spans/0/line_start").and_then(Value::as_u64) {
+                        println!("{} line {}", file_name, line);
+                    } else {
+                        println!("{}", file_name);
+                    }
+                }
+                println!("{}", message);
+                return true;
             }
         }
     }

@@ -1,5 +1,5 @@
 [package]
-name = "rust_autofix"
+name = "autofix"
 version = "0.1.0"
 authors = ["victor.koenders <victor.koenders@gmail.com>"]
 
