@@ -24,6 +24,7 @@ pub struct State {
     pub mode: RunMode,
     pub applied_suggestions: Vec<AppliedFixes>,
     pub output_compile_log: bool,
+    pub verbose: bool,
 }
 
 impl State {
@@ -33,16 +34,12 @@ impl State {
             mode: RunMode::Unknown,
             applied_suggestions: Vec::new(),
             output_compile_log: false,
+            verbose: false
         }
     }
 
     pub fn from_args<T: Iterator<Item = String>>(args: &mut T) -> Option<State> {
-        let mut state = State {
-            working_directory: String::from("."),
-            mode: RunMode::Unknown,
-            applied_suggestions: Vec::new(),
-            output_compile_log: false,
-        };
+        let mut state = State::new();
 
         while let Some(item) = args.next() {
             if item == "build" {
@@ -68,8 +65,12 @@ impl State {
                 }
             }
 
-            if item == "--output-log" {
+            if item == "--output-compile-log" {
                 state.output_compile_log = true;
+            }
+
+            if item == "--verbose" {
+                state.verbose = true;
             }
 
             if item == "--help" || item == "-h" {
@@ -84,11 +85,12 @@ impl State {
 
 fn print_usage() {
     println!("cargo autofix -- --help");
-    println!("cargo autofix -- -h       print this help");
-    println!("cargo autofix -- <mode> [--dir <dir>] [--output-log]");
-    println!("    mode        The mode that autofix will run cargo at");
-    println!("                Can be either of: build, check, run, kill-and-run");
-    println!("                kill-and-run will kill any previous processes before building");
-    println!("    dir         The current working directory");
-    println!("    output-log  Output a log \"compile.log\" at the working directory with the compile log");
+    println!("cargo autofix -- -h     print this help");
+    println!("cargo autofix -- <mode> [--dir <dir>] [--output-log] [--verbose]");
+    println!("    mode                The mode that autofix will run cargo at");
+    println!("                        Can be either of: build, check, run, kill-and-run");
+    println!("                        kill-and-run will kill any previous processes before building");
+    println!("    dir                 The current working directory");
+    println!("    output-compile-log  Output a log \"compile.log\" at the working directory with the compile log");
+    println!("    verbose             Print a lot of information that may or may not be useful");
 }

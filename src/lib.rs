@@ -43,6 +43,12 @@ pub fn run_with_state(state: &mut State) {
             std::fs::File::create("compile.log").unwrap().write_all(s.as_bytes()).unwrap();
         }
 
+        if state.verbose {
+            println!("{}", s);
+
+            println!("{}", String::from_utf8_lossy(&output.stderr));
+        }
+
         let mut print_output = false;
 
         for line in s.lines() {
@@ -80,7 +86,7 @@ pub fn run_with_state(state: &mut State) {
                 }
             }
 
-            if !was_handled && print_error(&json) {
+            if !was_handled && print_error(&json, state) {
                 should_build = false;
             }
         }
@@ -138,11 +144,13 @@ fn handle_suggestion(suggestion: &mut Box<suggestions::Suggestion>,
     }
 }
 
-fn print_error(json: &Value) -> bool {
+fn print_error(json: &Value, state: &State) -> bool {
     let level = match json.pointer("/message/level").and_then(Value::as_str) {
         Some(l) => l,
         None => {
-            // println!("Could not find message level: {}", json);
+            if state.verbose {
+                println!("Could not find message level");
+            }
             return false;
         }
     };
@@ -162,6 +170,10 @@ fn print_error(json: &Value) -> bool {
                     }
                 }
                 println!("{}", message);
+
+                if let Some(label) = json.pointer("/message/spans/0/label").and_then(Value::as_str) {
+                    println!("{}", label);
+                }
                 return true;
             }
         }
