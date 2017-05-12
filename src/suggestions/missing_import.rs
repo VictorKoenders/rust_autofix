@@ -84,9 +84,12 @@ impl Suggestion for MissingImport {
     }
 
 
-    fn apply_option(&mut self, state: &State, option: String) {
+    fn apply_option(&mut self, state: &State, option: String) -> bool {
         if let Err(e) = self.try_apply_option(state, option) {
             println!("Could not apply: {}", e);
+            false
+        } else {
+            true
         }
     }
 }

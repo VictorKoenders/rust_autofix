@@ -11,14 +11,14 @@ pub mod state;
 
 
 pub fn run_with_state(state: &State) {
-    let mut skipped_or_quit = false;
+    let mut should_build = true;
     let mut suggestions = suggestions::get_all_suggestions();
 
     let mut dir = PathBuf::new();
     dir.push(std::env::current_dir().unwrap());
     dir.push(state.working_directory.clone());
 
-    while !skipped_or_quit {
+    'mainloop: while should_build {
 
         println!("Compiling in the background, this might take a second...");
 
@@ -40,7 +40,7 @@ pub fn run_with_state(state: &State) {
 
         let mut has_had_errors = false;
 
-        'mainloop: for (index, line) in s.lines().enumerate() {
+        for (index, line) in s.lines().enumerate() {
             let json: Value = match serde_json::from_str(line) {
                 Ok(j) => j,
                 Err(e) => {
@@ -62,9 +62,13 @@ pub fn run_with_state(state: &State) {
                     has_had_errors = true;
                     was_handled = true;
                     match handle_suggestion(&mut suggestion, state) {
-                        HandleSuggestionResult::Skipped => skipped_or_quit = true,
+                        HandleSuggestionResult::Skipped => {
+                            if should_build {
+                                println!("cancelling subsequential builds");
+                                should_build = false;
+                            }
+                        }
                         HandleSuggestionResult::Quit => {
-                            skipped_or_quit = true;
                             break 'mainloop;
                         }
                         HandleSuggestionResult::Ok => {}
@@ -112,8 +116,13 @@ fn handle_suggestion(suggestion: &mut Box<suggestions::Suggestion>,
         match byte[0] {
             n if n >= b'0' && n <= b'9' && (n - b'0') as usize <= options.len() => {
                 let option = options[(n - b'0') as usize].clone();
-                suggestion.apply_option(state, option);
-                return HandleSuggestionResult::Ok;
+                if suggestion.apply_option(state, option) {
+                    println!("Applied change succesfully");
+                    return HandleSuggestionResult::Ok;
+                } else {
+                    println!("Could not apply change, quitting");
+                    return HandleSuggestionResult::Quit;
+                }
             }
             b's' => {
                 return HandleSuggestionResult::Skipped;
